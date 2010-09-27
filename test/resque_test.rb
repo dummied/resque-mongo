@@ -229,4 +229,53 @@ context "Resque" do
   test "decode bad json" do
     assert_nil Resque.decode("{\"error\":\"Module not found \\u002\"}")
   end
+=begin
+  class UniqueJob
+    @queue = :unique
+    @unique_jobs = true
+  end
+
+  class NonUnique
+    @queue = :unique
+  end
+
+  class OtherUnique
+    @queue = :unique2
+    @unique_jobs = true
+  end
+
+  test "unique jobs are unique" do     
+    #does uniqueness work?
+    Resque.enqueue(UniqueJob, {:_id => 'my_id', :arg1=> 'my args1'})
+    assert_equal(1, Resque.size(:unique))
+    assert_equal('my args1',  Resque.peek(:unique)['args'][0]['arg1'])
+    assert_equal('my_id',  Resque.peek(:unique)['args'][0]['_id'])
+    Resque.enqueue(UniqueJob, {:_id => 'my_id',  :arg1=> 'my args2'})
+    assert_equal(1, Resque.size(:unique))
+    assert_equal('my args2',  Resque.peek(:unique)['args'][0]['arg1'])
+
+    #if I enqueue unique jobs with the same key in 2 queues, do I get 2 jobs?
+    puts 'here we go'
+    Resque.enqueue(UniqueJob, {:_id => 'my_id3', :arg1=> 'my arg3'})
+    assert_equal(2, Resque.size(:unique))
+    Resque.enqueue(OtherUnique, {:_id => 'my_id3',  :arg1=> 'my args4'})
+    #following line fails because :unique and :unique2 are in the same collection
+    #\assert_equal(2, Resque.size(:unique))
+    assert_equal(1, Resque.size(:unique2))
+    
+    #can I enqueue normal jobs in the unique queue?
+    Resque.enqueue(NonUnique,  {:arg1=> 'my args'})
+    assert_equal(3, Resque.size(:unique))
+    Resque.enqueue(NonUnique,  {:_id => 'my_id', :_id => 'my_id', :arg1=> 'my args2'})
+    assert_equal(4, Resque.size(:unique))
+
+    #how do unique jobs work without a given _id?
+    Resque.enqueue(UniqueJob, {:arg1=> 'my args3'})
+    assert_equal(5, Resque.size(:unique))
+    assert_equal('my args3',  Resque.peek(:unique, 4)['args'][0]['arg1'])
+    Resque.enqueue(UniqueJob, {:arg1=> 'my args4'})
+    assert_equal(6, Resque.size(:unique))
+    assert_equal('my args4',  Resque.peek(:unique, 5)['args'][0]['arg1'])
+  end
+=end
 end
