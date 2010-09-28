@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 dir = File.dirname(File.expand_path(__FILE__))
 $LOAD_PATH.unshift dir + '/../lib'
 $TESTING = true
@@ -10,43 +11,10 @@ begin
 rescue LoadError
 end
 
-
-#
-# make sure we can run redis
-#
-
-if !system("which redis-server")
-  puts '', "** can't find `redis-server` in your path"
-  puts "** try running `sudo rake install`"
-  abort ''
-end
-
-
 #
 # start our own redis when the tests start,
 # kill it when they end
 #
-
-at_exit do
-  next if $!
-
-  if defined?(MiniTest)
-    exit_code = MiniTest::Unit.new.run(ARGV)
-  else
-    exit_code = Test::Unit::AutoRunner.run
-  end
-
-  pid = `ps -A -o pid,command | grep [r]edis-test`.split(" ")[0]
-  puts "Killing test redis server..."
-  `rm -f #{dir}/dump.rdb`
-  Process.kill("KILL", pid.to_i)
-  exit exit_code
-end
-
-puts "Starting redis for testing at localhost:9736..."
-`redis-server #{dir}/redis-test.conf`
-Resque.redis = 'localhost:9736'
-
 
 ##
 # test/spec/mini 3
@@ -114,3 +82,66 @@ class BadJobWithSyntaxError
     raise SyntaxError, "Extra Bad job!"
   end
 end
+
+class UniqueJob
+  @queue = :unique
+  @unique_jobs = true
+end
+
+class NonUnique
+  @queue = :unique
+end
+
+class OtherUnique
+  @queue = :unique2
+  @unique_jobs = true
+end
+
+
+#some redgreen fun
+# -*- coding: utf-8 -*-
+begin
+  require 'redgreen'
+  module Test
+    module Unit
+      module UI
+        module Console
+          class TestRunner
+            def test_started(name)
+              @individual_test_start_time = Time.now
+              output_single(name + ": ", VERBOSE)
+            end
+            
+            def test_finished(name)
+              elapsed_test_time = Time.now - @individual_test_start_time
+              char_to_output = elapsed_test_time > 1 ? "☻" : "."
+              output_single(char_to_output, PROGRESS_ONLY) unless (@already_outputted)
+              nl(VERBOSE)
+              @already_outputted = false
+            end
+          end
+        end
+      end
+    end
+  end
+  
+  # -*- coding: utf-8 -*-
+  class Test::Unit::UI::Console::RedGreenTestRunner < Test::Unit::UI::Console::TestRunner  
+    def output_single(something, level=NORMAL)
+      return unless (output?(level))
+      something = case something
+                  when '.' then Color.green('.')
+                  when '☻' then Color.green('☻')
+                  when 'F' then Color.red("F")
+                  when 'E' then Color.yellow("E")
+                  when '+' then Color.green('+')
+                  else something
+                  end
+      @io.write(something) 
+      @io.flush
+    end
+  end
+rescue LoadError
+  puts "consider gem install redgreen"
+end
+  

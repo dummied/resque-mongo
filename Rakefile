@@ -1,8 +1,6 @@
 #
 # Setup
 #
-
-load 'tasks/redis.rake'
 require 'rake/testtask'
 
 $LOAD_PATH.unshift 'lib'
@@ -40,7 +38,7 @@ end
 # Install
 #
 
-task :install => [ 'redis:install', 'dtach:install' ]
+task :install => [ 'dtach:install' ]
 
 
 #

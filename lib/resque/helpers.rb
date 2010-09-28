@@ -2,8 +2,16 @@ module Resque
   # Methods used by various classes in Resque.
   module Helpers
     # Direct access to the Redis instance.
-    def redis
-      Resque.redis
+    #def mongo
+    #  Resque.mongo
+    #end
+
+    def mongo_workers
+      Resque.mongo_workers
+    end
+
+    def mongo_stats
+      Resque.mongo_stats
     end
 
     # Given a Ruby object, returns a string suitable for storage in a

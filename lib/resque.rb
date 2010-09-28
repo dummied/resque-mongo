@@ -1,10 +1,11 @@
-require 'redis/namespace'
 
 begin
   require 'yajl'
 rescue LoadError
   require 'json'
 end
+
+require 'mongo'
 
 require 'resque/version'
 
@@ -23,48 +24,57 @@ module Resque
   include Helpers
   extend self
 
-  # Accepts:
-  #   1. A 'hostname:port' string
-  #   2. A 'hostname:port:db' string (to select the Redis db)
-  #   3. A 'hostname:port/namespace' string (to set the Redis namespace)
-  #   4. A redis URL string 'redis://host:port'
-  #   5. An instance of `Redis`, `Redis::Client`, `Redis::DistRedis`,
-  #      or `Redis::Namespace`.
-  def redis=(server)
-    if server.respond_to? :split
-      if server =~ /redis\:\/\//
-        redis = Redis.connect(:url => server)
+  def mongo=(server)
+    if server.is_a? String
+      opts = server.split(':')
+      host = opts[0]
+      if opts[1] =~ /\//
+        opts = opts[1].split('/')
+        port = opts[0]
+        queuedb = opts[1]
       else
-        server, namespace = server.split('/', 2)
-        host, port, db = server.split(':')
-        redis = Redis.new(:host => host, :port => port,
-          :thread_safe => true, :db => db)
+        port = opts[1]
       end
-      namespace ||= :resque
-
-      @redis = Redis::Namespace.new(namespace, :redis => redis)
-    elsif server.respond_to? :namespace=
-        @redis = server
-    else
-      @redis = Redis::Namespace.new(:resque, :redis => server)
+      conn = Mongo::Connection.new host, port
+    elsif server.is_a? Hash
+      conn = Mongo::Connection.new(options[:server], options[:port], options)
+      queuedb = options[:queuedb] || 'resque'
+    elsif server.is_a? Mongo::Connection
+      conn = server
     end
+    queuedb ||= 'resque'
+    @mongo = conn.db queuedb
+    add_indexes
   end
 
-  # Returns the current Redis connection. If none has been created, will
+  # Returns the current Mongo connection. If none has been created, will
   # create a new one.
-  def redis
-    return @redis if @redis
-    self.redis = 'localhost:6379'
-    self.redis
+  def mongo
+    return @mongo if @mongo
+    self.mongo = 'localhost:27017/resque'
+    self.mongo
   end
 
-  def redis_id
-    # support 1.x versions of redis-rb
-    if redis.respond_to?(:server)
-      redis.server
-    else
-      redis.client.id
-    end
+  def mongo_db=(db)
+      @mongo.conn.db = db
+  end
+
+
+  def add_indexes
+    mongo_workers.create_index :worker
+    mongo_stats.create_index :stat
+  end
+
+  def mongo_workers
+    mongo['resque.workers']
+  end
+
+  def mongo_stats
+    mongo['resque.stats']
+  end
+
+  def mongo_failures
+    mongo['resque.failures']
   end
 
   # The `before_first_fork` hook will be run in the **parent** process
@@ -115,7 +125,7 @@ module Resque
   end
 
   def to_s
-    "Resque Client connected to #{redis_id}"
+    "Resque Client connected to #{mongo.connection.host}:#{mongo.connection.port}/#{mongo.name}"
   end
 
 
@@ -126,21 +136,23 @@ module Resque
   # Pushes a job onto a queue. Queue name should be a string and the
   # item should be any JSON-able Ruby object.
   def push(queue, item)
-    watch_queue(queue)
-    redis.rpush "queue:#{queue}", encode(item)
+    mongo[queue] << item
   end
 
   # Pops a job off a queue. Queue name should be a string.
   #
   # Returns a Ruby object.
   def pop(queue)
-    decode redis.lpop("queue:#{queue}")
+    mongo[queue].find_and_modify(:sort => [:natural, :desc], :remove => true )
+  rescue Mongo::OperationFailure => e
+    return nil if e.message =~ /No matching object/
+    raise e
   end
 
   # Returns an integer representing the size of a queue.
   # Queue name should be a string.
   def size(queue)
-    redis.llen("queue:#{queue}").to_i
+    mongo[queue].count
   end
 
   # Returns an array of items currently queued. Queue name should be
@@ -152,38 +164,26 @@ module Resque
   # To get the 3rd page of a 30 item, paginatied list one would use:
   #   Resque.peek('my_list', 59, 30)
   def peek(queue, start = 0, count = 1)
-    list_range("queue:#{queue}", start, count)
+    list_range(queue, start, count)
   end
 
   # Does the dirty work of fetching a range of items from a Redis list
   # and converting them into Ruby objects.
   def list_range(key, start = 0, count = 1)
-    if count == 1
-      decode redis.lindex(key, start)
-    else
-      Array(redis.lrange(key, start, start+count-1)).map do |item|
-        decode item
-      end
-    end
+    items = mongo[key].find({ }, { :limit => count, :skip => start}).to_a.map{ |i| i}
+    count > 1 ? items : items.first
   end
 
   # Returns an array of all known Resque queues as strings.
-  def queues
-    Array(redis.smembers(:queues))
+  def queues    
+    names = mongo.collection_names
+    names.delete_if{ |name| name == 'system.indexes' || name =~ /resque\./ }  
   end
 
   # Given a queue name, completely deletes the queue.
   def remove_queue(queue)
-    redis.srem(:queues, queue.to_s)
-    redis.del("queue:#{queue}")
+    mongo[queue].drop
   end
-
-  # Used internally to keep track of which queues we've created.
-  # Don't call this directly.
-  def watch_queue(queue)
-    redis.sadd(:queues, queue.to_s)
-  end
-
 
   #
   # job shortcuts
@@ -286,9 +286,9 @@ module Resque
       :processed => Stat[:processed],
       :queues    => queues.size,
       :workers   => workers.size.to_i,
-      :working   => working.size,
+      :working   => working.count,
       :failed    => Stat[:failed],
-      :servers   => [redis_id],
+      :servers   => to_s,
       :environment  => ENV['RAILS_ENV'] || ENV['RACK_ENV'] || 'development'
     }
   end
@@ -296,8 +296,12 @@ module Resque
   # Returns an array of all known Resque keys in Redis. Redis' KEYS operation
   # is O(N) for the keyspace, so be careful - this can be slow for big databases.
   def keys
-    redis.keys("*").map do |key|
-      key.sub("#{redis.namespace}:", '')
-    end
+    names = mongo.collection_names
+    #names.delete_if{ |name| name == 'system.indexes' || name =~ /resque\./ }   
+  end
+
+  def drop
+    mongo.collections.each{ |collection| collection.drop unless collection.name =~ /^system./ }
+    @mongo = nil
   end
 end

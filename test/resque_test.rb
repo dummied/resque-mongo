@@ -2,7 +2,7 @@ require File.dirname(__FILE__) + '/test_helper'
 
 context "Resque" do
   setup do
-    Resque.redis.flushall
+    Resque.drop
 
     Resque.push(:people, { 'name' => 'chris' })
     Resque.push(:people, { 'name' => 'bob' })
@@ -10,10 +10,10 @@ context "Resque" do
   end
   
   test "can set a namespace through a url-like string" do
-    assert Resque.redis
-    assert_equal :resque, Resque.redis.namespace
-    Resque.redis = 'localhost:9736/namespace'
-    assert_equal 'namespace', Resque.redis.namespace
+    assert Resque.mongo
+    assert_equal 'resque', Resque.mongo.name
+    Resque.mongo = 'localhost:27017/namespace'
+    assert_equal 'namespace', Resque.mongo.name
   end
 
   test "can put jobs on a queue" do
@@ -132,36 +132,48 @@ context "Resque" do
     assert Resque.push(:people, { 'name' => 'jon' })
   end
 
+  def pop_no_id(queue)
+    item = Resque.pop(queue)
+    item.delete("_id")
+    item
+  end
+
+
   test "can pull items off a queue" do
-    assert_equal({ 'name' => 'chris' }, Resque.pop(:people))
-    assert_equal({ 'name' => 'bob' }, Resque.pop(:people))
-    assert_equal({ 'name' => 'mark' }, Resque.pop(:people))
+    assert_equal({ 'name' => 'chris' }, pop_no_id(:people))
+    assert_equal({ 'name' => 'bob' }, pop_no_id(:people)) 
+    assert_equal({ 'name' => 'mark' }, pop_no_id(:people))
     assert_equal nil, Resque.pop(:people)
   end
 
   test "knows how big a queue is" do
     assert_equal 3, Resque.size(:people)
 
-    assert_equal({ 'name' => 'chris' }, Resque.pop(:people))
+    assert_equal({ 'name' => 'chris' }, pop_no_id(:people))
     assert_equal 2, Resque.size(:people)
 
-    assert_equal({ 'name' => 'bob' }, Resque.pop(:people))
-    assert_equal({ 'name' => 'mark' }, Resque.pop(:people))
+    assert_equal({ 'name' => 'bob' }, pop_no_id(:people))
+    assert_equal({ 'name' => 'mark' }, pop_no_id(:people))
     assert_equal 0, Resque.size(:people)
   end
 
   test "can peek at a queue" do
-    assert_equal({ 'name' => 'chris' }, Resque.peek(:people))
+    peek = Resque.peek(:people)
+    peek.delete "_id"
+    assert_equal({ 'name' => 'chris' }, peek)
     assert_equal 3, Resque.size(:people)
   end
 
   test "can peek multiple items on a queue" do
-    assert_equal({ 'name' => 'bob' }, Resque.peek(:people, 1, 1))
-
-    assert_equal([{ 'name' => 'bob' }, { 'name' => 'mark' }], Resque.peek(:people, 1, 2))
-    assert_equal([{ 'name' => 'chris' }, { 'name' => 'bob' }], Resque.peek(:people, 0, 2))
-    assert_equal([{ 'name' => 'chris' }, { 'name' => 'bob' }, { 'name' => 'mark' }], Resque.peek(:people, 0, 3))
-    assert_equal({ 'name' => 'mark' }, Resque.peek(:people, 2, 1))
+    assert_equal('bob', Resque.peek(:people, 1, 1)['name'])
+    peek = Resque.peek(:people, 1, 2).map {  |hash| { 'name' => hash['name']}}
+    assert_equal([{ 'name' => 'bob' }, { 'name' => 'mark' }], peek)
+    peek = Resque.peek(:people, 0, 2).map {  |hash| { 'name' => hash['name']} }
+    assert_equal([{ 'name' => 'chris' }, { 'name' => 'bob' }], peek)
+    peek = Resque.peek(:people, 0, 3).map {  |hash| { 'name' => hash['name']} }
+    assert_equal([{ 'name' => 'chris' }, { 'name' => 'bob' }, { 'name' => 'mark' }], peek)
+    peek = Resque.peek(:people, 2, 1)
+    assert_equal('mark', peek['name'])
     assert_equal nil, Resque.peek(:people, 3)
     assert_equal [], Resque.peek(:people, 3, 2)
   end
@@ -169,24 +181,24 @@ context "Resque" do
   test "knows what queues it is managing" do
     assert_equal %w( people ), Resque.queues
     Resque.push(:cars, { 'make' => 'bmw' })
-    assert_equal %w( cars people ), Resque.queues
+    assert_equal %w( cars people ), Resque.queues.sort
   end
 
   test "queues are always a list" do
-    Resque.redis.flushall
+    Resque.drop
     assert_equal [], Resque.queues
   end
 
   test "can delete a queue" do
     Resque.push(:cars, { 'make' => 'bmw' })
-    assert_equal %w( cars people ), Resque.queues
+    assert_equal %w( cars people ), Resque.queues.sort
     Resque.remove_queue(:people)
     assert_equal %w( cars ), Resque.queues
     assert_equal nil, Resque.pop(:people)
   end
 
   test "keeps track of resque keys" do
-    assert_equal ["queue:people", "queues"], Resque.keys
+    assert Resque.keys.include? 'people'
   end
 
   test "badly wants a class name, too" do
@@ -223,25 +235,11 @@ context "Resque" do
     assert_equal 3, stats[:queues]
     assert_equal 3, stats[:processed]
     assert_equal 1, stats[:failed]
-    assert_equal [Resque.redis.respond_to?(:server) ? 'localhost:9736' : 'redis://localhost:9736/0'], stats[:servers]
+ #   assert_equal [Resque.redis.respond_to?(:server) ? 'localhost:9736' : 'redis://localhost:9736/0'], stats[:servers]
   end
 
   test "decode bad json" do
     assert_nil Resque.decode("{\"error\":\"Module not found \\u002\"}")
-  end
-=begin
-  class UniqueJob
-    @queue = :unique
-    @unique_jobs = true
-  end
-
-  class NonUnique
-    @queue = :unique
-  end
-
-  class OtherUnique
-    @queue = :unique2
-    @unique_jobs = true
   end
 
   test "unique jobs are unique" do     
@@ -277,5 +275,5 @@ context "Resque" do
     assert_equal(6, Resque.size(:unique))
     assert_equal('my args4',  Resque.peek(:unique, 5)['args'][0]['arg1'])
   end
-=end
+
 end

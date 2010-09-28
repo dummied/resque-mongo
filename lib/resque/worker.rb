@@ -24,18 +24,13 @@ module Resque
 
     # Returns an array of all worker objects.
     def self.all
-      Array(redis.smembers(:workers)).map { |id| find(id) }.compact
+      mongo_workers.distinct(:worker).map{|worker| find(worker)}.compact
     end
 
     # Returns an array of all worker objects currently processing
     # jobs.
     def self.working
-      names = all
-      return [] unless names.any?
-      names.map! { |name| "worker:#{name}" }
-      redis.mapped_mget(*names).keys.map do |key|
-        find key.sub("worker:", '')
-      end.compact
+      working = mongo_workers.find({ 'working_on' => { '$exists' => true}}).to_a.map{|w| find(w['worker'])}
     end
 
     # Returns a single worker object. Accepts a string id.
@@ -58,7 +53,7 @@ module Resque
     # Given a string worker id, return a boolean indicating whether the
     # worker exists
     def self.exists?(worker_id)
-      redis.sismember(:workers, worker_id)
+      mongo_workers.find({ :worker => worker_id.to_s}).count > 0
     end
 
     # Workers should be initialized with an array of string queue
@@ -298,15 +293,15 @@ module Resque
     end
 
     # Looks for any workers which should be running on this server
-    # and, if they're not, removes them from Redis.
+    # and, if they're not, removes them from Mongo.
     #
     # This is a form of garbage collection. If a server is killed by a
     # hard shutdown, power failure, or something else beyond our
     # control, the Resque workers will not die gracefully and therefore
-    # will leave stale state information in Redis.
+    # will leave stale state information in Mongo.
     #
-    # By checking the current Redis state against the actual
-    # environment, we can determine if Redis is old and clean it up a bit.
+    # By checking the current Mongo state against the actual
+    # environment, we can determine if Mongo is old and clean it up a bit.
     def prune_dead_workers
       all_workers = Worker.all
       known_workers = worker_pids unless all_workers.empty?
@@ -322,7 +317,7 @@ module Resque
     # Registers ourself as a worker. Useful when entering the worker
     # lifecycle on startup.
     def register_worker
-      redis.sadd(:workers, self)
+      mongo_workers << { :worker => self.to_s}
       started!
     end
 
@@ -348,30 +343,28 @@ module Resque
         job.fail(DirtyExit.new)
       end
 
-      redis.srem(:workers, self)
-      redis.del("worker:#{self}")
-      redis.del("worker:#{self}:started")
+      mongo_workers.remove :worker => self.to_s
 
       Stat.clear("processed:#{self}")
       Stat.clear("failed:#{self}")
     end
 
-    # Given a job, tells Redis we're working on it. Useful for seeing
+    # Given a job, tells Mongo we're working on it. Useful for seeing
     # what workers are doing and when.
     def working_on(job)
       job.worker = self
       data = encode \
-        :queue   => job.queue,
-        :run_at  => Time.now.to_s,
-        :payload => job.payload
-      redis.set("worker:#{self}", data)
+      :queue   => job.queue,
+      :run_at  => Time.now.to_s,
+      :payload => job.payload
+      mongo_workers.update({:worker => self.to_s}, { '$set' => { 'working_on' => data}}, :upsert => true)
     end
 
     # Called when we are done working - clears our `working_on` state
-    # and tells Redis we processed a job.
+    # and tells Mongo we processed a job.
     def done_working
       processed!
-      redis.del("worker:#{self}")
+      mongo_workers.remove({ :worker => self.to_s})
     end
 
     # How many jobs has this worker processed? Returns an int.
@@ -379,7 +372,7 @@ module Resque
       Stat["processed:#{self}"]
     end
 
-    # Tell Redis we've processed a job.
+    # Tell Mongo we've processed a job.
     def processed!
       Stat << "processed"
       Stat << "processed:#{self}"
@@ -390,7 +383,7 @@ module Resque
       Stat["failed:#{self}"]
     end
 
-    # Tells Redis we've failed a job.
+    # Tells Mongo we've failed a job.
     def failed!
       Stat << "failed"
       Stat << "failed:#{self}"
@@ -398,17 +391,19 @@ module Resque
 
     # What time did this worker start? Returns an instance of `Time`
     def started
-      redis.get "worker:#{self}:started"
+      worker = mongo_workers.find_one(:worker => self.to_s)
+      worker.nil? ? nil : worker['started']
     end
 
-    # Tell Redis we've started
+    # Tell Mongo we've started
     def started!
-      redis.set("worker:#{self}:started", Time.now.to_s)
+      mongo_workers.update({ :worker => self.to_s}, { '$set' => { :started => Time.now.to_s}})
     end
 
     # Returns a hash explaining the Job we're currently processing, if any.
     def job
-      decode(redis.get("worker:#{self}")) || {}
+      worker = mongo_workers.find_one :worker => self.to_s
+      worker.nil? ? { } : decode(worker['working_on'])
     end
     alias_method :processing, :job
 
@@ -425,7 +420,7 @@ module Resque
     # Returns a symbol representing the current worker state,
     # which can be either :working or :idle
     def state
-      redis.exists("worker:#{self}") ? :working : :idle
+      mongo_workers.find_one(:worker => self.to_s) ? :working : :idle
     end
 
     # Is this worker the same as another worker?

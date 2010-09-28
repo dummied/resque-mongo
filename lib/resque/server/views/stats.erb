@@ -1,4 +1,4 @@
-<% @subtabs = %w( resque redis keys ) %>
+<% @subtabs = %w( resque mongo keys ) %>
 
 <% if params[:key] %>
 
@@ -20,11 +20,11 @@
   <% end %>
   </table>
 
-<% elsif params[:id] == 'redis' %>
+<% elsif params[:id] == 'mongo' %>
 
-  <h1><%= resque.redis_id %></h1>
+  <h1><%= resque.to_s %></h1>
   <table class='stats'>
-  <% for key, value in resque.redis.info.to_a.sort_by { |i| i[0].to_s } %>
+  <% resque.mongo.stats.each_pair do |key, value| %>
     <tr>
       <th>
         <%= key %>
@@ -38,12 +38,10 @@
 
 <% elsif params[:id] == 'keys' %>
 
-  <h1>Keys owned by <%= resque %></h1>
-  <p class='sub'>(All keys are actually prefixed with "<%= Resque.redis.namespace %>:")</p>
+  <h1>Collections in <%= resque.to_s %></h1>
   <table class='stats'>
     <tr>
-      <th>key</th>
-      <th>type</th>
+      <th>collection</th>
       <th>size</th>
     </tr>
   <% for key in resque.keys.sort %>
@@ -51,8 +49,7 @@
       <th>
         <a href="<%=u "/stats/keys/#{key}" %>"><%= key %></a>
       </th>
-      <td><%= resque.redis.type key %></td>
-      <td><%= redis_get_size key %></td>
+      <td><%= resque.mongo[key].count %></td>
     </tr>
   <% end %>
   </table>

@@ -16,11 +16,9 @@
         <%= tab tab_name %>
       <% end %>
     </ul>
-    <% if Resque.redis.namespace != :resque %>
-      <abbr class="namespace" title="Resque's Redis Namespace">
-       <%= Resque.redis.namespace %>
-      </abbr>
-    <% end %>
+    <abbr class="namespace" title="Mongo Connection">
+      <%= Resque.to_s %>
+    </abbr>
   </div>
 
   <% if @subtabs %>
@@ -37,7 +35,7 @@
 
 <div id="footer">
   <p>Powered by <a href="http://github.com/defunkt/resque">Resque</a> v<%=Resque::Version%></p>
-  <p>Connected to Redis namespace <%= Resque.redis.namespace %> on <%=Resque.redis_id%></p>
+  <p>Connected to Mongo at <%= Resque.to_s %></p>
 </div>
 
 </body>
