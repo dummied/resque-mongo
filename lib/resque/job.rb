@@ -32,6 +32,7 @@ module Resque
     def initialize(queue, payload)
       @queue = queue
       @payload = payload
+      
     end
 
     # Creates a job by placing it on a queue. Expects a string queue

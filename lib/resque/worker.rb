@@ -353,10 +353,10 @@ module Resque
     # what workers are doing and when.
     def working_on(job)
       job.worker = self
-      data = encode \
-      :queue   => job.queue,
-      :run_at  => Time.now.to_s,
-      :payload => job.payload
+      data = #encode \
+        { :queue   => job.queue,
+        :run_at  => Time.now.to_s,
+        :payload => job.payload}
       mongo_workers.update({:worker => self.to_s}, { '$set' => { 'working_on' => data}}, :upsert => true)
     end
 
@@ -403,7 +403,7 @@ module Resque
     # Returns a hash explaining the Job we're currently processing, if any.
     def job
       worker = mongo_workers.find_one :worker => self.to_s
-      worker.nil? ? { } : decode(worker['working_on'])
+      worker.nil? ? { } : worker['working_on'] #decode(worker['working_on'])
     end
     alias_method :processing, :job
 

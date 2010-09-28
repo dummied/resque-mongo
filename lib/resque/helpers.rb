@@ -23,7 +23,7 @@ module Resque
         object.to_json
       end
     end
-
+    
     # Given a string, returns a Ruby object.
     def decode(object)
       return unless object

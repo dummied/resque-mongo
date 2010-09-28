@@ -90,6 +90,11 @@ end
 
 class NonUnique
   @queue = :unique
+
+  def self.perform(data)
+    "I has a #{data}"
+  end
+
 end
 
 class OtherUnique
@@ -99,49 +104,6 @@ end
 
 
 #some redgreen fun
-# -*- coding: utf-8 -*-
-begin
-  require 'redgreen'
-  module Test
-    module Unit
-      module UI
-        module Console
-          class TestRunner
-            def test_started(name)
-              @individual_test_start_time = Time.now
-              output_single(name + ": ", VERBOSE)
-            end
-            
-            def test_finished(name)
-              elapsed_test_time = Time.now - @individual_test_start_time
-              char_to_output = elapsed_test_time > 1 ? "☻" : "."
-              output_single(char_to_output, PROGRESS_ONLY) unless (@already_outputted)
-              nl(VERBOSE)
-              @already_outputted = false
-            end
-          end
-        end
-      end
-    end
-  end
-  
-  # -*- coding: utf-8 -*-
-  class Test::Unit::UI::Console::RedGreenTestRunner < Test::Unit::UI::Console::TestRunner  
-    def output_single(something, level=NORMAL)
-      return unless (output?(level))
-      something = case something
-                  when '.' then Color.green('.')
-                  when '☻' then Color.green('☻')
-                  when 'F' then Color.red("F")
-                  when 'E' then Color.yellow("E")
-                  when '+' then Color.green('+')
-                  else something
-                  end
-      @io.write(something) 
-      @io.flush
-    end
-  end
-rescue LoadError
-  puts "consider gem install redgreen"
-end
+
+
   

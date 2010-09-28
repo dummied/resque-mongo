@@ -56,7 +56,7 @@ module Resque
   end
 
   def mongo_db=(db)
-      @mongo.conn.db = db
+      mongo.conn.db = db
   end
 
 
@@ -143,7 +143,7 @@ module Resque
   #
   # Returns a Ruby object.
   def pop(queue)
-    mongo[queue].find_and_modify(:sort => [:natural, :desc], :remove => true )
+    item = mongo[queue].find_and_modify(:sort => [:natural, :desc], :remove => true )
   rescue Mongo::OperationFailure => e
     return nil if e.message =~ /No matching object/
     raise e
@@ -297,11 +297,12 @@ module Resque
   # is O(N) for the keyspace, so be careful - this can be slow for big databases.
   def keys
     names = mongo.collection_names
-    #names.delete_if{ |name| name == 'system.indexes' || name =~ /resque\./ }   
   end
 
   def drop
-    mongo.collections.each{ |collection| collection.drop unless collection.name =~ /^system./ }
+    mongo.collections.each{ |collection| collection.drop unless collection.name =~ /^system./
+   # puts "dropping #{collection.name}" unless collection.name =~ /^system./}
+    }
     @mongo = nil
   end
 end
