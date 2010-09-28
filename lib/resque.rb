@@ -23,7 +23,10 @@ require 'resque/plugin'
 module Resque
   include Helpers
   extend self
-
+  attr_accessor :bypass_queues
+  @bypass_queues = false
+  
+  
   def mongo=(server)
     if server.is_a? String
       opts = server.split(':')
@@ -203,7 +206,11 @@ module Resque
   #
   # This method is considered part of the `stable` API.
   def enqueue(klass, *args)
-    Job.create(queue_from_class(klass), klass, *args)
+    if @bypass_queues
+      klass.send(:perform, *args)
+    else
+      Job.create(queue_from_class(klass), klass, *args)
+    end
   end
 
   # This method can be used to conveniently remove a job from a queue.
@@ -300,9 +307,7 @@ module Resque
   end
 
   def drop
-    mongo.collections.each{ |collection| collection.drop unless collection.name =~ /^system./
-   # puts "dropping #{collection.name}" unless collection.name =~ /^system./}
-    }
+    mongo.collections.each{ |collection| collection.drop unless collection.name =~ /^system./ }
     @mongo = nil
   end
 end

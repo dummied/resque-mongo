@@ -102,8 +102,3 @@ class OtherUnique
   @unique_jobs = true
 end
 
-
-#some redgreen fun
-
-
-  

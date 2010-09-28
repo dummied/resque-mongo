@@ -242,8 +242,8 @@ context "Resque" do
     assert_nil Resque.decode("{\"error\":\"Module not found \\u002\"}")
   end
 
-=begin
-  test "unique jobs are unique" do     
+  test "unique jobs are unique" do  
+
     #does uniqueness work?
     Resque.enqueue(UniqueJob, {:_id => 'my_id', :arg1=> 'my args1'})
     assert_equal(1, Resque.size(:unique))
@@ -275,8 +275,6 @@ context "Resque" do
     Resque.enqueue(UniqueJob, {:arg1=> 'my args4'})
     assert_equal(6, Resque.size(:unique))
     assert_equal('my args4',  Resque.peek(:unique, 5)['args'][0]['arg1'])
+
   end
-
-=end
-
 end
