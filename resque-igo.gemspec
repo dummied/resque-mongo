@@ -2,7 +2,7 @@ $LOAD_PATH.unshift 'lib'
 require 'resque/version'
 
 Gem::Specification.new do |s|
-  s.name              = "resque"
+  s.name              = "resque-igo"
   s.version           = Resque::Version
   s.date              = Time.now.strftime('%Y-%m-%d')
   s.summary           = "Resque-igo is a mongo-backed queueing system"
