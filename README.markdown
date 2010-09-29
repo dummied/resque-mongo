@@ -30,6 +30,48 @@ not doing, what queues you're using, what's in those queues, provides
 general usage stats, and helps you track failures.
 
 
+What did you guys do to Resque?
+===============================
+
+This version of Resque uses mongo as the back end.  It also has some neat
+new features that you may enjoy
+
+Features
+--------
+
+It stores each queue in its own collection.
+
+For testing purposes. Resque.bypass_queues will call your job's
+perform method AT ONCE, and not touch the queue at all.  This can be
+useful when writing unit tests against things that would normally
+happen partially in your request and partially in a worker.
+
+If your job object has a variable called @unique_jobs = true, you
+can queue unique jobs - jobs that must only be processed once.  In 
+order to take advantage of this feature, the arguments to your enqueue
+call must include a hash containing a key called _id in the first
+position. 
+
+Stern Warnings
+--------------
+
+Sometimes, Resque-Mongo will drop a queue collection, or create some 
+indexes, or otherwise manipulate its database.  For this reason, it is
+STRONGLY recommended that you give it its own database in mongo.
+
+All jobs should be queued via Resque.enqueue.  All arguments passed to
+this method must be BSON-encodable.  Resque-Mongo does not serialize
+your objects for you.  Arrays, Hashes, Strings, Numbers, and Times
+are all ok, so don't worry.
+
+Many of the new queue-level features require the first argument of
+your perform method to be an options hash.  In fact, if you just start
+making all your perform()s take one param, that is an options hash,
+you'll probably save yourself some pain.
+
+Back to the original README
+===========================
+
 The Blog Post
 -------------
 
