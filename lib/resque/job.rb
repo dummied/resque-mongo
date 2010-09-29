@@ -50,15 +50,7 @@ module Resque
       end
 
       item = { :class => klass.to_s, :args => args}
-      if Resque.allows_unique_jobs(klass)
-        if args.is_a?(Hash) && args.has_key?(:_id)
-          item[:_id] = args[:_id]
-        elsif args.is_a? Array
-          if args[0].is_a?(Hash) && args[0].has_key?(:_id)
-            item[:_id] = args[0][:_id]
-          end
-        end
-      end
+      item[:_id] = args[0][:_id] if Resque.allows_unique_jobs(klass) && args.is_a?(Array) && args[0].is_a?(Hash) && args[0].has_key?(:_id)
       item[:unique] = true if item[:_id]
       
       ret = Resque.push(queue, item)
