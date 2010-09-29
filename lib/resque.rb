@@ -131,6 +131,10 @@ module Resque
     "Resque Client connected to #{mongo.connection.host}:#{mongo.connection.port}/#{mongo.name}"
   end
 
+  def allows_unique_jobs(klass)
+    klass.instance_variable_get(:@unique_jobs) ||
+      (klass.respond_to?(:unique_jobs) and klass.unique_jobs)
+  end
 
   #
   # queue manipulation
@@ -139,7 +143,11 @@ module Resque
   # Pushes a job onto a queue. Queue name should be a string and the
   # item should be any JSON-able Ruby object.
   def push(queue, item)
-    mongo[queue] << item
+    if item[:unique]
+      mongo[queue].update({'_id' => item[:_id]}, item, { :upsert => true})
+    else
+      mongo[queue] << item
+    end
   end
 
   # Pops a job off a queue. Queue name should be a string.

@@ -49,7 +49,19 @@ module Resque
         raise NoClassError.new("Jobs must be given a class.")
       end
 
-      ret = Resque.push(queue, :class => klass.to_s, :args => args)
+      item = { :class => klass.to_s, :args => args}
+      if Resque.allows_unique_jobs(klass)
+        if args.is_a?(Hash) && args.has_key?(:_id)
+          item[:_id] = args[:_id]
+        elsif args.is_a? Array
+          if args[0].is_a?(Hash) && args[0].has_key?(:_id)
+            item[:_id] = args[0][:_id]
+          end
+        end
+      end
+      item[:unique] = true if item[:_id]
+      
+      ret = Resque.push(queue, item)
       Plugin.after_enqueue_hooks(klass).each do |hook|
         klass.send(hook, *args)
       end
