@@ -299,15 +299,4 @@ context "Resque::Worker" do
     workerA.work(0)
     assert $AFTER_FORK_CALLED
   end
-
-  test "Can bypass queues for testing" do
-    Resque.enqueue(NonUnique, 'test')
-    assert_equal(1, Resque.size(:unique))
-    Resque.bypass_queues = true
-    Resque.enqueue(NonUnique, 'test')
-    assert_equal(1, Resque.size(:unique))
-    Resque.bypass_queues = false
-    Resque.enqueue(NonUnique, 'test')
-    assert_equal(2, Resque.size(:unique))    
-  end
 end

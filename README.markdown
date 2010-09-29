@@ -69,6 +69,14 @@ your perform method to be an options hash.  In fact, if you just start
 making all your perform()s take one param, that is an options hash,
 you'll probably save yourself some pain.
 
+Resque-Mongo will not create any indexes on your queues, only on its
+meta-data.  You will need to create any indexes you want.  Normally,
+This is not a problem, because you aren't querying by keys, but you may
+want to create indexes on the class key.  If you use the unique or
+wait features, you may want some additional indexes, depending on
+the nature of your workload.  Paranoid?  Test enqueuing and processing
+all your jobs, and run with --notablescans.
+
 Back to the original README
 ===========================
 

@@ -274,4 +274,15 @@ context "Resque" do
     assert_equal(6, Resque.size(:unique))
     assert_equal('my args4',  Resque.peek(:unique, 5)['args'][0]['arg1'])
   end
+
+  test "Can bypass queues for testing" do
+    Resque.enqueue(NonUnique, 'test')
+    assert_equal(1, Resque.size(:unique))
+    Resque.bypass_queues = true
+    Resque.enqueue(NonUnique, 'test')
+    assert_equal(1, Resque.size(:unique))
+    Resque.bypass_queues = false
+    Resque.enqueue(NonUnique, 'test')
+    assert_equal(2, Resque.size(:unique))    
+  end
 end
