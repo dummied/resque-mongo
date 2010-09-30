@@ -100,5 +100,18 @@ end
 class OtherUnique
   @queue = :unique2
   @unique_jobs = true
+  @delayed_jobs = true
 end
+
+class DelayedJob
+  @queue = :delayed
+  @delayed_jobs = true
+  @unique_jobs = true
+
+  def self.perform(data)
+    "delayed job executing #{data.inspect}"
+  end
+
+end
+
 

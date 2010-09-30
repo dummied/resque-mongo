@@ -46,11 +46,17 @@ perform method AT ONCE, and not touch the queue at all.  This can be
 useful when writing unit tests against things that would normally
 happen partially in your request and partially in a worker.
 
-If your job object has a variable called @unique_jobs = true, you
+If your job class has a variable called @unique_jobs = true, you
 can queue unique jobs - jobs that must only be processed once.  In 
 order to take advantage of this feature, the arguments to your enqueue
 call must include a hash containing a key called _id in the first
 position. 
+
+If your job class indicates that @delayed_jobs = true, you can queue
+delayed jobs.  These jobs will not be popped off the queue until the
+Time indicated in arg[0][:delay_until] has come.  Note that you must
+call Resque.enable_delay(:queue) before enququing any delayed jobs, to
+ensure that the performance impact on other queues is minimal.
 
 Stern Warnings
 --------------
@@ -72,10 +78,15 @@ you'll probably save yourself some pain.
 Resque-Mongo will not create any indexes on your queues, only on its
 meta-data.  You will need to create any indexes you want.  Normally,
 This is not a problem, because you aren't querying by keys, but you may
-want to create indexes on the class key.  If you use the unique or
-wait features, you may want some additional indexes, depending on
-the nature of your workload.  Paranoid?  Test enqueuing and processing
-all your jobs, and run with --notablescans.
+want to create indexes on the class key in some circumstances.  If you 
+use the unique or delay features, you may want some additional indexes, 
+depending on the nature of your workload.  Paranoid?  Test enqueuing and 
+processing all your jobs, and run with --notablescans.  Learn the profiler,
+and use it often.
+
+Specifically, a queue with many long-delayed jobs will result in slower queue pops
+for all jobs using that queue.  Index delay_until in the case of
+thousands of delayed jobs.
 
 Back to the original README
 ===========================

@@ -25,6 +25,7 @@ module Resque
   extend self
   attr_accessor :bypass_queues
   @bypass_queues = false
+  @delay_allowed = []
   
   
   def mongo=(server)
@@ -136,6 +137,15 @@ module Resque
       (klass.respond_to?(:unique_jobs) and klass.unique_jobs)
   end
 
+  def allows_delayed_jobs(klass)
+    klass.instance_variable_get(:@delayed_jobs) ||
+      (klass.respond_to?(:delayed_jobs) and klass.delayed_jobs)
+  end
+
+  def enable_delay(queue)
+    @delay_allowed << queue unless @delay_allowed.include? queue
+  end
+
   #
   # queue manipulation
   #
@@ -154,7 +164,11 @@ module Resque
   #
   # Returns a Ruby object.
   def pop(queue)
-    item = mongo[queue].find_and_modify(:sort => [:natural, :desc], :remove => true )
+    query = { }
+    if @delay_allowed.include? queue
+      query['delay_until'] = { '$not' => { '$gt' => Time.new}}
+    end
+    item = mongo[queue].find_and_modify(:query => query, :sort => [:natural, :desc], :remove => true )
   rescue Mongo::OperationFailure => e
     return nil if e.message =~ /No matching object/
     raise e
@@ -163,8 +177,18 @@ module Resque
   # Returns an integer representing the size of a queue.
   # Queue name should be a string.
   def size(queue)
+ 
+    if @delay_allowed.include? queue
+      mongo[queue].find({'delay_until' => { '$not' => { '$gt' => Time.new}}}).count
+    else
+      mongo[queue].count
+    end
+  end
+
+  def raw_size(queue)
     mongo[queue].count
   end
+
 
   # Returns an array of items currently queued. Queue name should be
   # a string.
@@ -181,7 +205,11 @@ module Resque
   # Does the dirty work of fetching a range of items from a Redis list
   # and converting them into Ruby objects.
   def list_range(key, start = 0, count = 1)
-    items = mongo[key].find({ }, { :limit => count, :skip => start}).to_a.map{ |i| i}
+    query = { }
+    if @delay_allowed.include? key
+      query['delay_until'] = { '$not' => { '$gt' => Time.new}}
+    end
+    items = mongo[key].find(query, { :limit => count, :skip => start}).to_a.map{ |i| i}
     count > 1 ? items : items.first
   end
 

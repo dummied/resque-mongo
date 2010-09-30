@@ -3,7 +3,8 @@ require File.dirname(__FILE__) + '/test_helper'
 context "Resque" do
   setup do
     Resque.drop
-
+    Resque.bypass_queues = false
+    Resque.enable_delay(:delayed)
     Resque.push(:people, { 'name' => 'chris' })
     Resque.push(:people, { 'name' => 'bob' })
     Resque.push(:people, { 'name' => 'mark' })
@@ -284,5 +285,50 @@ context "Resque" do
     Resque.bypass_queues = false
     Resque.enqueue(NonUnique, 'test')
     assert_equal(2, Resque.size(:unique))    
+  end
+
+  test "delayed jobs work" do
+    args = { :delay_until => Time.new-1}
+    Resque.enqueue(DelayedJob, args)
+    job = Resque::Job.reserve(:delayed)
+    assert_equal(1, job.args[0].keys.length)
+    assert_equal(args[:delay_until].to_i, job.args[0]["delay_until"].to_i)
+    args[:delay_until] = Time.new + 2
+    Resque.enqueue(DelayedJob, args)
+    
+    assert_equal(0, Resque.size(:delayed))
+    assert_nil Resque.peek(:delayed)
+    assert_nil Resque::Job.reserve(:delayed)
+    sleep 1
+    assert_nil Resque::Job.reserve(:delayed)
+    sleep 1
+    assert_equal(DelayedJob, Resque::Job.reserve(:delayed).payload_class)
+  end
+
+  test "delayed unique jobs modify args in place" do
+    args = { :delay_until => Time.new + 3600, :_id => 'unique'}
+    Resque.enqueue(DelayedJob, args)
+    assert_nil(Resque.peek(:delayed))
+    args[:delay_until] = Time.new - 1
+    Resque.enqueue(DelayedJob, args)
+    assert_equal(2, Resque::Job.reserve(:delayed).args[0].keys.count)
+  end
+
+  test "delayed attribute is ignored when bypassing queues" do
+    Resque.bypass_queues = true
+    args = { :delay_until => Time.new+20}
+    foo =  Resque.enqueue(DelayedJob, args)
+    assert(0, Resque.size(:delayed))
+    assert(args[:delay_until] > Time.new)
+    assert(foo =~ /^delayed job executing/)
+    Resque.bypass_queues = false
+  end
+
+  test "other queues are not affected" do
+    args = { :delay_until => Time.new+10}
+    assert OtherUnique.instance_variable_get :@delayed_jobs
+    Resque.enqueue(OtherUnique, args)
+    job = Resque::Job.reserve(:unique2)
+    assert_equal(1, job.args[0].keys.length)
   end
 end

@@ -50,8 +50,10 @@ module Resque
       end
 
       item = { :class => klass.to_s, :args => args}
-      item[:_id] = args[0][:_id] if Resque.allows_unique_jobs(klass) && args.is_a?(Array) && args[0].is_a?(Hash) && args[0].has_key?(:_id)
+      item[:_id] = args[0][:_id] if Resque.allows_unique_jobs(klass) && args[0].is_a?(Hash) && args[0].has_key?(:_id)
       item[:unique] = true if item[:_id]
+      item[:delay_until] = args[0][:delay_until] if Resque.allows_delayed_jobs(klass) && args[0].is_a?(Hash) && args[0].has_key?(:delay_until)
+      
       
       ret = Resque.push(queue, item)
       Plugin.after_enqueue_hooks(klass).each do |hook|
