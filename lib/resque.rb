@@ -74,7 +74,7 @@ module Resque
   end
 
   def mongo_stats
-    mongo['resque.stats']
+    mongo['resque.metrics']
   end
 
   def mongo_failures

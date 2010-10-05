@@ -19,8 +19,8 @@ context "Resque::Worker" do
   test "failed jobs report exception and message" do
     Resque::Job.create(:jobs, BadJobWithSyntaxError)
     @worker.work(0)
-    assert_equal('SyntaxError', Resque::Failure.all['exception'])
-    assert_equal('Extra Bad job!', Resque::Failure.all['error'])
+    assert_equal('SyntaxError', Resque::Failure.all.first['exception'])
+    assert_equal('Extra Bad job!', Resque::Failure.all.first['error'])
   end
 
   test "fails uncompleted jobs on exit" do

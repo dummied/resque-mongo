@@ -24,6 +24,20 @@
 
   <h1><%= resque.to_s %></h1>
   <table class='stats'>
+  <% resque.mongo_stats.find.to_a.each do |hash| %>
+    <tr>
+      <th>
+        <%= hash['stat'] %>
+      </th>
+      <td>
+        <%= hash['value'] %>
+      </td>
+    </tr>
+  <% end %>
+  </table>
+
+  <h1>Mongo Database Health</h1>
+  <table class='stats'>
   <% resque.mongo.stats.each_pair do |key, value| %>
     <tr>
       <th>

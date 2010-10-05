@@ -21,7 +21,8 @@ desc "Run the test suite"
 task :test do
   rg = command?(:rg)
   Dir['test/**/*_test.rb'].each do |f|
-    rg ? sh("rg #{f}") : ruby(f)
+    #rg ? sh("rg #{f}") : ruby(f)
+    ruby(f)
   end
 end
 
