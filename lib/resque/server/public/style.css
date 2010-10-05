@@ -40,6 +40,11 @@ body { padding:0; margin:0; }
 #main table.jobs td.class { font-family:Monaco, "Courier New", monospace; font-size:90%; width:50%;}
 #main table.jobs td.args{ width:50%;}
 
+#main table.delays td.class { font-family:Monaco, "Courier New", monospace; font-size:90%; width:20%;}
+#main table.delays td.args{ width:40%;}
+#main table.delays td.delay{ width:40%;}
+
+
 #main table.workers td.icon {width:1%; background:#efefef;text-align:center;}
 #main table.workers td.where { width:25%;}
 #main table.workers td.queues { width:35%;}

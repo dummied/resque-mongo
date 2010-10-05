@@ -68,7 +68,7 @@ module Resque
     mongo_workers.create_index :worker
     mongo_stats.create_index :stat
     delay_allowed = mongo_stats.find_one({ :stat => 'Delayable Queues'}, { :fields => ['value']})
-    @delay_allowed = delay_allowed['value'] if delay_allowed    
+    @delay_allowed = delay_allowed['value'].map{ |queue| queue.to_sym} if delay_allowed    
   end
 
   def mongo_workers
@@ -144,9 +144,15 @@ module Resque
       (klass.respond_to?(:delayed_jobs) and klass.delayed_jobs)
   end
 
+  def queue_allows_delayed(queue)
+    @delay_allowed.include? queue
+  end
+
   def enable_delay(queue)
-    @delay_allowed << queue unless @delay_allowed.include? queue
-    mongo_stats.update({:stat => 'Delayable Queues'}, { '$set' => { 'value' => @delay_allowed}}, { :upsert => true})
+    unless @delay_allowed.include? queue
+      @delay_allowed << queue 
+      mongo_stats.update({:stat => 'Delayable Queues'}, { '$addToSet' => { 'value' => queue}}, { :upsert => true})
+    end
   end
 
   #
@@ -208,18 +214,29 @@ module Resque
   #
   # To get the 3rd page of a 30 item, paginatied list one would use:
   #   Resque.peek('my_list', 59, 30)
-  def peek(queue, start = 0, count = 1)
-    list_range(queue, start, count)
+  def peek(queue, start = 0, count = 1, mode = :ready)
+    list_range(queue, start, count, mode)
   end
 
   # Does the dirty work of fetching a range of items from a Redis list
   # and converting them into Ruby objects.
-  def list_range(key, start = 0, count = 1)
+  def list_range(key, start = 0, count = 1, mode = :ready)
     query = { }
-    if @delay_allowed.include? key
-      query['delay_until'] = { '$not' => { '$gt' => Time.new}}
+    sort = []
+    if @delay_allowed.include?(key)
+      if mode == :ready
+        query['delay_until'] = { '$not' => { '$gt' => Time.new}}
+      elsif mode == :delayed
+        query['delay_until'] = { '$gt' => Time.new}
+      elsif mode == :delayed_sorted
+        query['delay_until'] = { '$gt' => Time.new}
+        sort << ['delay_until', 1]
+      elsif mode == :all_sorted
+        query = {}
+        sort << ['delay_until', 1]
+      end
     end
-    items = mongo[key].find(query, { :limit => count, :skip => start}).to_a.map{ |i| i}
+    items = mongo[key].find(query, { :limit => count, :skip => start, :sort => sort}).to_a.map{ |i| i}
     count > 1 ? items : items.first
   end
 

@@ -2,7 +2,7 @@
 
 <% if params[:key] %>
 
-<%= partial resque.redis.type(params[:key]).eql?("string") ? :key_string : :key_sets %>
+<%= partial :key_sets %>
 
 <% elsif params[:id] == "resque" %>
 
@@ -24,13 +24,13 @@
 
   <h1><%= resque.to_s %></h1>
   <table class='stats'>
-  <% resque.mongo_stats.find.to_a.each do |hash| %>
+    <% resque.mongo_stats.find.to_a.each do |hash| %>
     <tr>
       <th>
         <%= hash['stat'] %>
       </th>
       <td>
-        <%= hash['value'] %>
+        <%= hash['value'].inspect %>
       </td>
     </tr>
   <% end %>
