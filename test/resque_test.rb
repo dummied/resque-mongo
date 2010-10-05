@@ -294,9 +294,10 @@ context "Resque" do
     assert_equal(1, job.args[0].keys.length)
     assert_equal(args[:delay_until].to_i, job.args[0]["delay_until"].to_i)
     args[:delay_until] = Time.new + 2
+    assert_equal(0, Resque.delayed_size(:delayed))
     Resque.enqueue(DelayedJob, args)
     
-    assert_equal(0, Resque.size(:delayed))
+    assert_equal(1, Resque.delayed_size(:delayed))
     assert_nil Resque.peek(:delayed)
     assert_nil Resque::Job.reserve(:delayed)
     sleep 1
@@ -330,5 +331,21 @@ context "Resque" do
     Resque.enqueue(OtherUnique, args)
     job = Resque::Job.reserve(:unique2)
     assert_equal(1, job.args[0].keys.length)
+  end
+
+  test "can enqueue normal jobs in a delayed queue" do
+    args = { :delay_until => Time.new + 3600}
+    Resque.enqueue(DelayedJob, args)
+    Resque.enqueue(DelayedJob, args)
+    Resque.enqueue(DelayedJob, args)
+    assert_equal(3, Resque.size(:delayed))
+    assert_equal(3, Resque.delayed_size(:delayed))
+    assert_equal(0, Resque.ready_size(:delayed))
+    Resque.enqueue(NonDelayedJob, args)
+    Resque.enqueue(NonDelayedJob, args)
+    Resque.enqueue(DelayedJob, args)
+    assert_equal(6, Resque.size(:delayed))
+    assert_equal(2, Resque.ready_size(:delayed))
+    assert_equal(4, Resque.delayed_size(:delayed))
   end
 end

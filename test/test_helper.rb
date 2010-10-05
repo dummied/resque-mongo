@@ -107,11 +107,13 @@ class DelayedJob
   @queue = :delayed
   @delayed_jobs = true
   @unique_jobs = true
-
   def self.perform(data)
     "delayed job executing #{data.inspect}"
   end
+end
 
+class NonDelayedJob
+  @queue = :delayed
 end
 
 #some redgreen fun

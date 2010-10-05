@@ -48,7 +48,7 @@ module Resque
     end
     queuedb ||= 'resque'
     @mongo = conn.db queuedb
-    add_indexes
+    initialize_mongo
   end
 
   # Returns the current Mongo connection. If none has been created, will
@@ -64,9 +64,11 @@ module Resque
   end
 
 
-  def add_indexes
+  def initialize_mongo
     mongo_workers.create_index :worker
     mongo_stats.create_index :stat
+    delay_allowed = mongo_stats.find_one({ :stat => 'Delayable Queues'}, { :fields => ['value']})
+    @delay_allowed = delay_allowed['value'] if delay_allowed    
   end
 
   def mongo_workers
@@ -144,6 +146,7 @@ module Resque
 
   def enable_delay(queue)
     @delay_allowed << queue unless @delay_allowed.include? queue
+    mongo_stats.update({:stat => 'Delayable Queues'}, { '$set' => { 'value' => @delay_allowed}}, { :upsert => true})
   end
 
   #
@@ -176,17 +179,24 @@ module Resque
 
   # Returns an integer representing the size of a queue.
   # Queue name should be a string.
-  def size(queue)
- 
+  def size(queue) 
+    mongo[queue].count
+  end
+
+  def delayed_size(queue)
     if @delay_allowed.include? queue
-      mongo[queue].find({'delay_until' => { '$not' => { '$gt' => Time.new}}}).count
+      mongo[queue].find({'delay_until' => { '$gt' => Time.new}}).count
     else
       mongo[queue].count
     end
   end
 
-  def raw_size(queue)
-    mongo[queue].count
+  def ready_size(queue)
+    if @delay_allowed.include? queue
+      mongo[queue].find({'delay_until' =>  { '$not' => { '$gt' => Time.new}}}).count
+    else
+      mongo[queue].count
+    end
   end
 
 
