@@ -47,7 +47,7 @@ module Resque
       conn = server
     end
     queuedb ||= 'resque'
-    @mongo = conn.db queuedb
+    @mongo = conn.db queuedb    
     initialize_mongo
   end
 
@@ -145,11 +145,11 @@ module Resque
   end
 
   def queue_allows_delayed(queue)
-    @delay_allowed.include? queue
+    @delay_allowed.include?(queue.to_sym) || @delay_allowed.include?(queue.to_s)
   end
 
   def enable_delay(queue)
-    unless @delay_allowed.include? queue
+    unless queue_allows_delayed queue
       @delay_allowed << queue 
       mongo_stats.update({:stat => 'Delayable Queues'}, { '$addToSet' => { 'value' => queue}}, { :upsert => true})
     end
@@ -174,7 +174,7 @@ module Resque
   # Returns a Ruby object.
   def pop(queue)
     query = { }
-    if @delay_allowed.include? queue
+    if queue_allows_delayed queue
       query['delay_until'] = { '$not' => { '$gt' => Time.new}}
     end
     item = mongo[queue].find_and_modify(:query => query, :sort => [:natural, :desc], :remove => true )
@@ -190,7 +190,7 @@ module Resque
   end
 
   def delayed_size(queue)
-    if @delay_allowed.include? queue
+    if queue_allows_delayed queue
       mongo[queue].find({'delay_until' => { '$gt' => Time.new}}).count
     else
       mongo[queue].count
@@ -198,7 +198,7 @@ module Resque
   end
 
   def ready_size(queue)
-    if @delay_allowed.include? queue
+    if queue_allows_delayed queue
       mongo[queue].find({'delay_until' =>  { '$not' => { '$gt' => Time.new}}}).count
     else
       mongo[queue].count
@@ -223,7 +223,7 @@ module Resque
   def list_range(key, start = 0, count = 1, mode = :ready)
     query = { }
     sort = []
-    if @delay_allowed.include?(key)
+    if queue_allows_delayed(key)
       if mode == :ready
         query['delay_until'] = { '$not' => { '$gt' => Time.new}}
       elsif mode == :delayed
