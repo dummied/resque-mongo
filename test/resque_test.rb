@@ -325,27 +325,17 @@ context "Resque" do
     Resque.bypass_queues = false
   end
 
-  test "other queues are not affected" do
-    args = { :delay_until => Time.new+10}
-    assert OtherUnique.instance_variable_get :@delayed_jobs
-    Resque.enqueue(OtherUnique, args)
-    job = Resque::Job.reserve(:unique2)
-    assert_equal(1, job.args[0].keys.length)
-  end
-
-  test "can enqueue normal jobs in a delayed queue" do
-    args = { :delay_until => Time.new + 3600}
-    Resque.enqueue(DelayedJob, args)
-    Resque.enqueue(DelayedJob, args)
-    Resque.enqueue(DelayedJob, args)
-    assert_equal(3, Resque.size(:delayed))
-    assert_equal(3, Resque.delayed_size(:delayed))
-    assert_equal(0, Resque.ready_size(:delayed))
-    Resque.enqueue(NonDelayedJob, args)
-    Resque.enqueue(NonDelayedJob, args)
-    Resque.enqueue(DelayedJob, args)
-    assert_equal(6, Resque.size(:delayed))
-    assert_equal(2, Resque.ready_size(:delayed))
-    assert_equal(4, Resque.delayed_size(:delayed))
+  test "mixing delay and non-delay is bad" do
+    dargs = { :delay_until => Time.new + 3600}
+    
+    #non-delay into delay
+    assert_raise(Resque::QueueError) do
+      Resque.enqueue(NonDelayedJob, dargs)
+    end
+    
+    #delay into non-delay
+    assert_raise(Resque::QueueError) do
+      Resque.enqueue(MistargetedDelayedJob, dargs)
+    end
   end
 end

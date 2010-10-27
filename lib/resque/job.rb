@@ -50,10 +50,26 @@ module Resque
       end
 
       item = { :class => klass.to_s, :args => args}
+            
       item[:_id] = args[0][:_id] if Resque.allows_unique_jobs(klass) && args[0].is_a?(Hash) && args[0].has_key?(:_id)
       item[:unique] = true if item[:_id]
-      item[:delay_until] = args[0][:delay_until] if Resque.allows_delayed_jobs(klass) && args[0].is_a?(Hash) && args[0].has_key?(:delay_until)
       
+      #are we trying to put a non-delayed job into a delayed queue?
+      if Resque.queue_allows_delayed(queue)
+        if Resque.allows_delayed_jobs(klass)
+          if args[0].is_a?(Hash) && args[0].has_key?(:delay_until)
+            item[:delay_until] = args[0][:delay_until]
+          else
+            raise QueueError.new 'trying to insert delayed job without delay_until'
+          end
+        else
+          raise QueueError.new 'trying to insert non-delayed job into delayed queue'
+        end
+      else
+        if Resque.allows_delayed_jobs(klass)
+          raise QueueError.new 'trying to insert a delayed job into a non-delayed queue'
+        end
+      end
       
       ret = Resque.push(queue, item)
       Plugin.after_enqueue_hooks(klass).each do |hook|

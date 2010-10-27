@@ -247,7 +247,7 @@ module Resque
   # Returns an array of all known Resque queues as strings.
   def queues    
     names = mongo.collection_names
-    names.delete_if{ |name| name == 'system.indexes' || name =~ /resque\./ }  
+    names.delete_if{ |name| name =~ /system./ || name =~ /resque\./ }  
   end
 
   # Given a queue name, completely deletes the queue.
