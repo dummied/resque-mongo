@@ -63,6 +63,9 @@ module Resque
       mongo.conn.db = db
   end
 
+  def mongo?
+    return @mongo
+  end
 
   def initialize_mongo
     mongo_workers.create_index :worker
@@ -177,7 +180,8 @@ module Resque
     if queue_allows_delayed queue
       query['delay_until'] = { '$not' => { '$gt' => Time.new}}
     end
-    item = mongo[queue].find_and_modify(:query => query, :sort => [:natural, :desc], :remove => true )
+    #sorting will result in significant performance penalties for large queues, you have been warned.
+    item = mongo[queue].find_and_modify(:query => query, :remove => true )
   rescue Mongo::OperationFailure => e
     return nil if e.message =~ /No matching object/
     raise e

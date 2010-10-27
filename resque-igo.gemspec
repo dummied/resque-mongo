@@ -6,8 +6,8 @@ Gem::Specification.new do |s|
   s.version           = Resque::Version
   s.date              = Time.now.strftime('%Y-%m-%d')
   s.summary           = "Resque-igo is a mongo-backed queueing system"
-  s.homepage          = "http://github.com/naginata/resque-mongo"
-  s.email             = "naginata@gmail.com"
+  s.homepage          = "http://github.com/mediocretes/resque-mongo"
+  s.email             = "nacuff@igodigital.com"
   s.authors           = [ "Nathan D Acuff" ]
 
   s.files             = %w( README.markdown Rakefile LICENSE HISTORY.md )
@@ -30,7 +30,7 @@ Gem::Specification.new do |s|
     Resque is a Redis-backed Ruby library for creating background jobs,
     placing those jobs on multiple queues, and processing them later.
 
-Resque-igo is the same thing, but for mongo.  It would not exist without the work of defunkt and ctrochalakis on github.
+    Resque-igo is the same thing, but for mongo.  It would not exist without the work of defunkt and ctrochalakis on github.
 
     Background jobs can be any Ruby class or module that responds to
     perform. Your existing classes can easily be converted to background
