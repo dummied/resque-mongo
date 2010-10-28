@@ -32,8 +32,8 @@ module Resque
     # back to `Resque::Failure::Redis`
     def self.backend
       return @backend if @backend
-      require 'resque/failure/redis'
-      @backend = Failure::Redis
+      require 'resque/failure/mongo'
+      @backend = Failure::Mongo
     end
 
     # Returns the int count of how many failures we have seen.
