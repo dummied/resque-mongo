@@ -9,7 +9,7 @@
     <p class='sub'>Showing <%= start = params[:start].to_i %> to <%= start + 20 %> of <b><%=size = resque.size(queue.to_sym)%></b> jobs</p><table class='jobs'>
       <tr>
         <th>Class</th>
-        <th>Args1</th>
+        <th>Args</th>
         <th>Enqueued At</th>
       </tr>
       <% for job in (jobs = resque.peek(queue.to_sym, start, 20)) %>

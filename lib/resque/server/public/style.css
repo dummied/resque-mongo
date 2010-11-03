@@ -38,11 +38,11 @@ body { padding:0; margin:0; }
 #main table.queues tr.failure td a{ color:#d37474;}
 
 #main table.jobs td.class { font-family:Monaco, "Courier New", monospace; font-size:90%; width:30%;}
-#main table.jobs td.args{ width:50%;}
+#main table.jobs td.args{ width:50%;word-break:break-word;}
 #main table.jobs td.enqueuedat{ width:20%;}
 
 #main table.delays td.class { font-family:Monaco, "Courier New", monospace; font-size:90%; width:20%;}
-#main table.delays td.args{ width:40%;}
+#main table.delays td.args{ width:40%;word-break:break-word;}
 #main table.delays td.delay{ width:20%;}
 #main table.delays td.enqueuedat{ width:20%;}
 
