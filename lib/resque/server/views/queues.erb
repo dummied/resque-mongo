@@ -16,7 +16,7 @@
         <tr>
           <td class='class'><%= job['class'] %></td>
           <td class='args'><%=h job['args'].inspect %></td>
-        <td class='enqueuedat><%=h enqueued_at(job['resque_enqueue_timestamp']) %></td>
+          <td class='enqueuedat'>><%=h enqueued_at(job['resque_enqueue_timestamp']) %></td>
         </tr>
       <% end %>  
   <% else %>

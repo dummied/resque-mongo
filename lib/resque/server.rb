@@ -112,7 +112,10 @@ module Resque
     end
 
     def enqueued_at(resque_enqueue_timestamp)
-
+      return 'Unknown' if delay_until.nil?
+      now = Time.now
+      time = distance_of_time_in_words(now, resque_enqueue_timestamp)
+      return "time"
     end
     
     def distance_of_time_in_words(from_time, to_time = 0, include_seconds = true, options = {})
