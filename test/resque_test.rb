@@ -141,27 +141,27 @@ context "Resque" do
 
 
   test "can pull items off a queue" do
-    assert_equal({ 'name' => 'chris' }, pop_no_id(:people))
-    assert_equal({ 'name' => 'bob' }, pop_no_id(:people)) 
-    assert_equal({ 'name' => 'mark' }, pop_no_id(:people))
+    assert_equal('chris', pop_no_id(:people)['name'])
+    assert_equal('bob', pop_no_id(:people)['name']) 
+    assert_equal('mark', pop_no_id(:people)['name'])
     assert_equal nil, Resque.pop(:people)
   end
 
   test "knows how big a queue is" do
     assert_equal 3, Resque.size(:people)
 
-    assert_equal({ 'name' => 'chris' }, pop_no_id(:people))
+    assert_equal('chris', pop_no_id(:people)['name'])
     assert_equal 2, Resque.size(:people)
 
-    assert_equal({ 'name' => 'bob' }, pop_no_id(:people))
-    assert_equal({ 'name' => 'mark' }, pop_no_id(:people))
+    assert_equal('bob', pop_no_id(:people)['name'])
+    assert_equal('mark', pop_no_id(:people)['name'])
     assert_equal 0, Resque.size(:people)
   end
 
   test "can peek at a queue" do
     peek = Resque.peek(:people)
     peek.delete "_id"
-    assert_equal({ 'name' => 'chris' }, peek)
+    assert_equal('chris', peek['name'])
     assert_equal 3, Resque.size(:people)
   end
 

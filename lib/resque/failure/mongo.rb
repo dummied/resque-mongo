@@ -21,7 +21,6 @@ module Resque
       end
 
       def self.all(start = 0, count = 1)
-        
         all_failures = Resque.mongo_failures.find().skip(start.to_i).limit(count.to_i).to_a
         all_failures.size == 1 ? all_failures.first : all_failures        
       end

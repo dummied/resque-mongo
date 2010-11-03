@@ -10,11 +10,13 @@
       <tr>
         <th>Class</th>
         <th>Args1</th>
+        <th>Enqueued At</th>
       </tr>
       <% for job in (jobs = resque.peek(queue.to_sym, start, 20)) %>
         <tr>
           <td class='class'><%= job['class'] %></td>
           <td class='args'><%=h job['args'].inspect %></td>
+        <td class='enqueuedat><%=h enqueued_at(job['resque_enqueue_timestamp']) %></td>
         </tr>
       <% end %>  
   <% else %>
@@ -22,14 +24,16 @@
       <tr>
         <th>Class</th>
         <th>Args</th>
+        <th>Enqueued At</th>
         <th>Processes In</th>
       </tr>
       <% for job in (jobs = resque.peek(queue.to_sym, start, 20, :all_sorted)) %>
       <tr>
         <td class='class'><%= job['class'] %></td>
         <td class='args'><%=h job['args'].inspect %></td>
+        <td class='enqueuedat'><%=h enqueued_at(job['resque_enqueue_timestamp']) %></td>      
         <td class='delay'><%=h processes_in(job['delay_until']) %></td>
-      </tr>
+        </tr>
       <% end %>    
     <% end %>
     <% if jobs.empty? %>

@@ -165,6 +165,7 @@ module Resque
   # Pushes a job onto a queue. Queue name should be a string and the
   # item should be any JSON-able Ruby object.
   def push(queue, item)
+    item[:resque_enqueue_timestamp] = Time.now
     if item[:unique]
       mongo[queue].update({'_id' => item[:_id]}, item, { :upsert => true})
     else

@@ -19,8 +19,9 @@ context "Resque::Worker" do
   test "failed jobs report exception and message" do
     Resque::Job.create(:jobs, BadJobWithSyntaxError)
     @worker.work(0)
-    assert_equal('SyntaxError', Resque::Failure.all.first['exception'])
-    assert_equal('Extra Bad job!', Resque::Failure.all.first['error'])
+    failure = Resque::Failure.all.is_a?(Array) ? Resque::Failure.all.first : Resque::Failure.all
+    assert_equal('SyntaxError', failure['exception'])
+    assert_equal('Extra Bad job!', failure['error'])
   end
 
   test "fails uncompleted jobs on exit" do
@@ -142,6 +143,7 @@ context "Resque::Worker" do
     @worker.work(0) do
       task = @worker.job
       task['payload'].delete "_id"
+      task['payload'].delete "resque_enqueue_timestamp"
       assert_equal({"args"=>[20, "/tmp"], "class"=>"SomeJob"}, task['payload'])
       assert task['run_at']
       assert_equal 'jobs', task['queue'].to_s
