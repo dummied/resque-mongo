@@ -123,6 +123,11 @@ class NonDelayedJob
   @queue = :delayed
 end
 
+class HydraJob
+  @queue = :hydra
+  @hydra = 2
+end
+
 #some redgreen fun
 # -*- coding: utf-8 -*-
 begin

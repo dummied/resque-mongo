@@ -319,7 +319,7 @@ context "Resque" do
     Resque.bypass_queues = true
     args = { :delay_until => Time.new+20}
     foo =  Resque.enqueue(DelayedJob, args)
-    assert(0, Resque.size(:delayed))
+    assert_equal(0, Resque.size(:delayed))
     assert(args[:delay_until] > Time.new)
     assert(foo =~ /^delayed job executing/)
     Resque.bypass_queues = false
@@ -337,5 +337,15 @@ context "Resque" do
     assert_raise(Resque::QueueError) do
       Resque.enqueue(MistargetedDelayedJob, dargs)
     end
+  end
+
+  test "hydra works" do
+    20.times do
+      Resque.enqueue(HydraJob, { :one => 'one'})
+    end
+    assert_equal(0, Resque.size(:hydra))
+    assert_equal(20, Resque.size(:hydra1)+Resque.size(:hydra0))
+    assert(0 != Resque.size(:hydra1))
+    assert(0 != Resque.size(:hydra0))
   end
 end

@@ -70,6 +70,10 @@ module Resque
           raise QueueError.new 'trying to insert a delayed job into a non-delayed queue'
         end
       end
+
+      #is it a hydra job?
+      heads = klass.instance_variable_get(:@hydra)
+      queue = (queue.to_s + rand(heads).to_s).to_sym if heads
       
       ret = Resque.push(queue, item)
       Plugin.after_enqueue_hooks(klass).each do |hook|
