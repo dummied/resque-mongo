@@ -128,6 +128,12 @@ class HydraJob
   @hydra = 2
 end
 
+class UniqueHydraJob
+  @queue = :hydra
+  @unique_jobs = true
+  @hydra = 100
+end
+
 #some redgreen fun
 # -*- coding: utf-8 -*-
 begin

@@ -73,7 +73,13 @@ module Resque
 
       #is it a hydra job?
       heads = klass.instance_variable_get(:@hydra)
-      queue = (queue.to_s + rand(heads).to_s).to_sym if heads
+      if heads
+        if item[:_id]
+          queue = (queue.to_s + (item[:_id].hash % heads).to_s).to_sym 
+        else
+          queue = (queue.to_s + rand(heads).to_s).to_sym     
+        end
+      end
       
       ret = Resque.push(queue, item)
       Plugin.after_enqueue_hooks(klass).each do |hook|
