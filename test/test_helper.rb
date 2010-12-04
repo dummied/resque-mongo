@@ -94,7 +94,6 @@ class NonUnique
   def self.perform(data)
     "I has a #{data}"
   end
-
 end
 
 class OtherUnique
@@ -132,6 +131,20 @@ class UniqueHydraJob
   @queue = :hydra
   @unique_jobs = true
   @hydra = 100
+end
+
+class BadFailureBackend < Resque::Failure::Base
+  def save
+    raise Exception.new("Failure backend error")
+  end
+end
+
+def with_failure_backend(failure_backend, &block)
+  previous_backend = Resque::Failure.backend
+  Resque::Failure.backend = failure_backend
+  yield block
+ensure
+  Resque::Failure.backend = previous_backend
 end
 
 #some redgreen fun
@@ -180,5 +193,3 @@ begin
 rescue LoadError
   puts "consider gem install redgreen"
 end
-
-
