@@ -1,6 +1,7 @@
 #!/usr/bin/env ruby
 
 $LOAD_PATH.unshift File.dirname(__FILE__) + '/../lib'
+require 'rubygems'
 require 'resque'
 
 def kill(worker)
@@ -34,6 +35,12 @@ def list
   end
 end
 
+def queues
+  Resque.queues.each do |queue|
+    puts"Queue #{queue}: #{Resque.size(queue)}"
+  end
+end
+
 if (i = ARGV.index('-r')) && ARGV[i+1]
   Resque.redis = ARGV[i+1]
   ARGV.delete_at(i)
@@ -47,6 +54,8 @@ when 'remove'
   remove ARGV[1]
 when 'list'
   list
+when 'queues'
+  queues
 else
   puts "Usage: resque [-r redis_host:redis_port] COMMAND [option]"
   puts
@@ -54,4 +63,5 @@ else
   puts "  remove WORKER   Removes a worker"
   puts "  kill WORKER     Kills a worker"
   puts "  list            Lists known workers"
+  puts "  queues          checks queue depth"
 end
