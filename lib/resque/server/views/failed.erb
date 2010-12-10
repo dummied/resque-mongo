@@ -12,6 +12,7 @@
 <p class='sub'>Showing <%=start%> to <%= start + 20 %> of <b><%= size = Resque::Failure.count %></b> jobs</p>
 
 <ul class='failed'>
+  <% failed = [failed] unless failed.is_a? Array %>
   <%for job in failed%>
     <% index += 1 %>
     <li>
