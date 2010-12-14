@@ -182,7 +182,8 @@ module Resque
       query['delay_until'] = { '$not' => { '$gt' => Time.new}}
     end
     #sorting will result in significant performance penalties for large queues, you have been warned.
-    item = mongo[queue].find_and_modify(:query => query, :remove => true, :sort => [[:_id, :asc]] )
+    #this applies to _id, too.  it'd be nice, but it won't work, so don't try it.
+    item = mongo[queue].find_and_modify(:query => query, :remove => true) #, :sort => [[:_id, :asc]] )
   rescue Mongo::OperationFailure => e
     return nil if e.message =~ /No matching object/
     raise e
