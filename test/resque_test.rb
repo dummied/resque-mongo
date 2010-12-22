@@ -16,6 +16,13 @@ context "Resque" do
     Resque.mongo = 'localhost:27017/namespace'
     assert_equal 'namespace', Resque.mongo.name
   end
+  
+  test "can connect through a mongodb uri" do
+    Resque.mongo.connection.db('authenticated_resque_db').add_user('username', 'password')
+    uri = 'mongodb://username:password@localhost:27017/authenticated_resque_db'
+    Resque.mongo = uri
+    assert_equal 'authenticated_resque_db', Resque.mongo.name
+  end
 
   test "can put jobs on a queue" do
     assert Resque::Job.create(:jobs, 'SomeJob', 20, '/tmp')

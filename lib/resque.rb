@@ -29,7 +29,12 @@ module Resque
   
   
   def mongo=(server)
-    if server.is_a? String
+    if server.is_a?(String) && server.start_with?('mongodb://')
+      raise "Connecting with a mongodb uri requires Mongo driver version 1.1.5 or higher." if Mongo::VERSION < "1.1.5"
+      conn = Mongo::Connection.from_uri(server)
+      nodes, auths = Mongo::URIParser.parse(server)
+      queuedb = auths.first['db_name']
+    elsif server.is_a? String
       opts = server.split(':')
       host = opts[0]
       if opts[1] =~ /\//
@@ -41,8 +46,8 @@ module Resque
       end
       conn = Mongo::Connection.new host, port
     elsif server.is_a? Hash
-      conn = Mongo::Connection.new(options[:server], options[:port], options)
-      queuedb = options[:queuedb] || 'resque'
+      conn = Mongo::Connection.new(server[:server], server[:port], server)
+      queuedb = server[:queuedb] || 'resque'
     elsif server.is_a? Mongo::Connection
       conn = server
     end
@@ -134,7 +139,8 @@ module Resque
   end
 
   def to_s
-    "Resque Client connected to #{mongo.connection.host}:#{mongo.connection.port}/#{mongo.name}"
+    connection_info = Mongo::VERSION >= "1.1.3" ? mongo.connection.primary_pool : mongo.connection
+    "Resque Client connected to #{connection_info.host}:#{connection_info.port}/#{mongo.name}"
   end
 
   def allows_unique_jobs(klass)
