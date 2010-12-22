@@ -134,7 +134,8 @@ module Resque
   end
 
   def to_s
-    "Resque Client connected to #{mongo.connection.host}:#{mongo.connection.port}/#{mongo.name}"
+    connection_info = Mongo::VERSION >= "1.1.3" ? mongo.connection.primary_pool : mongo.connection
+    "Resque Client connected to #{connection_info.host}:#{connection_info.port}/#{mongo.name}"
   end
 
   def allows_unique_jobs(klass)
