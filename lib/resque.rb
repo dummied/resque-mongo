@@ -46,8 +46,8 @@ module Resque
       end
       conn = Mongo::Connection.new host, port
     elsif server.is_a? Hash
-      conn = Mongo::Connection.new(options[:server], options[:port], options)
-      queuedb = options[:queuedb] || 'resque'
+      conn = Mongo::Connection.new(server[:server], server[:port], server)
+      queuedb = server[:queuedb] || 'resque'
     elsif server.is_a? Mongo::Connection
       conn = server
     end
