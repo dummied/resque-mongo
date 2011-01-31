@@ -30,10 +30,8 @@ module Resque
   
   def mongo=(server)
     if server.is_a?(String) && server.start_with?('mongodb://')
-      raise "Connecting with a mongodb uri requires Mongo driver version 1.1.5 or higher." if Mongo::VERSION < "1.1.5"
       conn = Mongo::Connection.from_uri(server)
-      nodes, auths = Mongo::URIParser.parse(server)
-      queuedb = auths.first['db_name']
+      queuedb = Mongo::URIParser.new(server).auths.first['db_name']
     elsif server.is_a? String
       opts = server.split(':')
       host = opts[0]
