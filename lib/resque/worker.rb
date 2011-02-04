@@ -68,7 +68,7 @@ module Resque
     # in alphabetical order. Queues can be dynamically added or
     # removed without needing to restart workers using this method.
     def initialize(*queues)
-      @queues = queues
+      @queues = queues.map { |queue| queue.to_s.strip }
       validate_queues
     end
 
@@ -152,7 +152,11 @@ module Resque
         job.perform
       rescue Object => e
         log "#{job.inspect} failed: #{e.inspect}"
-        job.fail(e)
+        begin
+          job.fail(e)
+        rescue Object => e
+          log "Received exception when reporting failure: #{e.inspect}"
+        end
         failed!
       else
         log "done: #{job.inspect}"
@@ -173,6 +177,10 @@ module Resque
       end
 
       nil
+    rescue Exception => e
+      log "Error reserving job: #{e.inspect}"
+      log e.backtrace.join("\n")
+      raise e
     end
 
     # Returns a list of queues to use when searching for a job.
@@ -435,7 +443,7 @@ module Resque
     # The string representation is the same as the id for this worker
     # instance. Can be used with `Worker.find`.
     def to_s
-      @to_s ||= "#{hostname}:#{Process.pid}:#{@queues.join(',')}"
+      @to_s ||= "#{hostname}:#{pid}:#{@queues.join(',')}"
     end
     alias_method :id, :to_s
 
@@ -444,10 +452,15 @@ module Resque
       @hostname ||= `hostname`.chomp
     end
 
+    # Returns PID of running worker
+    def pid
+      @pid ||= Process.pid
+    end
+
     # Returns an array of string pids of all the other workers on this
     # machine. Useful when pruning dead workers on startup.
     def worker_pids
-      `ps -A -o pid,command | grep [r]esque`.split("\n").map do |line|
+      `ps -A -o pid,command | grep [r]esque | grep -i "resque-web"`.split("\n").map do |line|
         line.split(' ')[0]
       end
     end

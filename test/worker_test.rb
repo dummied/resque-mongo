@@ -1,4 +1,4 @@
-require File.dirname(__FILE__) + '/test_helper'
+require File.expand_path('../test_helper', __FILE__)
 
 context "Resque::Worker" do
   setup do
@@ -22,6 +22,13 @@ context "Resque::Worker" do
     failure = Resque::Failure.all.is_a?(Array) ? Resque::Failure.all.first : Resque::Failure.all
     assert_equal('SyntaxError', failure['exception'])
     assert_equal('Extra Bad job!', failure['error'])
+  end
+
+  test "does not allow exceptions from failure backend to escape" do
+    job = Resque::Job.new(:jobs, {})
+    with_failure_backend BadFailureBackend do
+      @worker.perform job
+    end
   end
 
   test "fails uncompleted jobs on exit" do
@@ -54,6 +61,12 @@ context "Resque::Worker" do
     @worker.process
     @worker.process
     assert_equal 2, Resque::Failure.count
+  end
+
+  test "strips whitespace from queue names" do
+    queues = "critical, high, low".split(',')
+    worker = Resque::Worker.new(*queues)
+    assert_equal %w( critical high low ), worker.queues
   end
 
   test "can work on multiple queues" do
@@ -300,5 +313,9 @@ context "Resque::Worker" do
     Resque::Job.create(:jobs, SomeJob, 20, '/tmp')
     workerA.work(0)
     assert $AFTER_FORK_CALLED
+  end
+
+  test "returns PID of running process" do
+    assert_equal Process.pid, @worker.pid
   end
 end
