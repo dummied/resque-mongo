@@ -23,7 +23,7 @@ Gem::Specification.new do |s|
 
   s.add_dependency "vegas",           "~> 0.1.2"
   s.add_dependency "sinatra",         ">= 0.9.2"
-  s.add_dependency "json",            "~> 1.4.6"
+  s.add_dependency "json",            "1.5.1"
   s.add_dependency "mongo",  "~> 1.2.0"
   
   s.description = <<description
